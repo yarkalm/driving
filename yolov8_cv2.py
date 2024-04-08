@@ -1,4 +1,5 @@
 import cv2
+from torch.cuda import is_available
 from ultralytics import YOLO
 
 # Load the YOLOv8 model
