@@ -4,6 +4,9 @@ from ultralytics import YOLO
 # Load the YOLOv8 model
 model = YOLO('yolov8s.pt')
 
+
+title = 'YOLOv8 Tracking on cuda' if is_available() else 'YOLOv8 Tracking on cpu'
+
 # Open the video file
 video_path = input("Введите ссылку на видеопоток или видео: ")
 cap = cv2.VideoCapture(video_path)
@@ -21,7 +24,7 @@ while cap.isOpened():
         annotated_frame = results[0].plot()
 
         # Display the annotated frame
-        cv2.imshow("YOLOv8 Inference", annotated_frame)
+        cv2.imshow(title, annotated_frame)
 
         # Break the loop if 'q' is pressed
         if cv2.waitKey(1) & 0xFF == ord("q"):
