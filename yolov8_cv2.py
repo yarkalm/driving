@@ -2,7 +2,7 @@ import cv2
 from ultralytics import YOLO
 
 # Load the YOLOv8 model
-model = YOLO('yolov8n.pt')
+model = YOLO('yolov8s.pt')
 
 # Open the video file
 video_path = input("Введите ссылку на видеопоток или видео: ")
