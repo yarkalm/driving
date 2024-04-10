@@ -1,15 +1,15 @@
+import threading
+from collections import defaultdict
+from queue import Queue
+from time import time
+from lane_detect import lane_finding_pipeline
 import cv2
 import numpy as np
-import threading
-from time import time
 from torch import cat
-from queue import Queue
-from ultralytics import YOLO
-from collections import defaultdict
 from torch.cuda import is_available
+from ultralytics import YOLO
 from ultralytics.utils.plotting import colors
 
-# from opencv_draw_annotation import draw_bounding_box
 title = 'YOLOv8 Tracking on cuda' if is_available() else 'YOLOv8 Tracking on cpu'
 
 # Загрузка моделей YOLOv8
@@ -22,7 +22,8 @@ cams = {'Доватора - Блюхера': "https://cdn.cams.is74.ru/hls/playl
                                          "-461d-a277-26e2f8c0ab03",
         'Ленина - Артиллерийская': "https://cdn.cams.is74.ru/hls/playlists/multivariant.m3u8?uuid=04bb24b0-dee6-4848"
                                    "-8963-163ab3bcc25c",
-        'Yar': "https://cam15.yar-net.ru/x8VFniUW/mono.m3u8?token=8383e7d35fdab88c943b339c2f5a8137"}
+        'Yar': "https://cam15.yar-net.ru/OL6y9ghd/mono.m3u8?token=7bc9b4f6796ede3ab681067a74a95131",
+        'Car city driver': "3d_car_driving_test.mp4"}
 
 cams_id = {i: item for i, item in enumerate(cams.keys())}
 
@@ -51,6 +52,8 @@ def process_frame_car_model(fr):
 def process_frame_sign_model(fr):
     boxes = sign_model.track(fr, imgsz=256, iou=0.5, conf=0.20, stream_buffer=True, verbose=False, persist=True)
     sign_queue.put(boxes)
+
+
 
 
 while True:
@@ -83,8 +86,6 @@ while True:
         cv2.putText(frame, f'{"{:.2f} ms".format(avg_inf)}', (frame.shape[1] - 105, frame.shape[0] - 10),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2, cv2.LINE_AA)
 
-        print(sign_result.boxes)
-
         if sign_result.boxes.id is not None and car_result.boxes.id is not None:
             boxes = cat((car_result.boxes.xywh.cpu(), sign_result.boxes.xywh.cpu()), dim=0)
             track_ids = car_result.boxes.id.int().cpu().tolist() + sign_result.boxes.id.int().cpu().tolist()
@@ -114,7 +115,7 @@ while True:
             points = np.hstack(track).astype(np.int32).reshape((-1, 1, 2))
             cv2.polylines(frame, [points], isClosed=False, color=colors(cls, bgr=True), thickness=5,
                           lineType=cv2.LINE_4, shift=0)
-
+        frame = lane_finding_pipeline(frame)
         cv2.imshow(title, frame)
 
         # Выход по нажатию 'q'
