@@ -14,7 +14,7 @@ title = 'YOLOv8 Tracking on cuda' if is_available() else 'YOLOv8 Tracking on cpu
 
 # Загрузка моделей YOLOv8
 car_model = YOLO('yolov8s.pt')
-sign_model = YOLO('best(s).pt')
+sign_model = YOLO('roadsings_weights.pt')
 
 cams = {'Доватора - Блюхера': "https://cdn.cams.is74.ru/hls/playlists/multivariant.m3u8?uuid=8e6a6c46-9f40-4f72-8c8c"
                               "-305ed67effdc",
