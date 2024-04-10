@@ -2,8 +2,9 @@ import threading
 from collections import defaultdict
 from queue import Queue
 from time import time
-from lane_detect import lane_finding_pipeline
+from lane_detect import lane_finding, perspective_transformer
 import cv2
+
 import numpy as np
 from torch import cat
 from torch.cuda import is_available
@@ -11,6 +12,9 @@ from ultralytics import YOLO
 from ultralytics.utils.plotting import colors
 
 title = 'YOLOv8 Tracking on cuda' if is_available() else 'YOLOv8 Tracking on cpu'
+
+
+perspective_transformer()
 
 # Загрузка моделей YOLOv8
 car_model = YOLO('yolov8s.pt')
@@ -23,7 +27,8 @@ cams = {'Доватора - Блюхера': "https://cdn.cams.is74.ru/hls/playl
         'Ленина - Артиллерийская': "https://cdn.cams.is74.ru/hls/playlists/multivariant.m3u8?uuid=04bb24b0-dee6-4848"
                                    "-8963-163ab3bcc25c",
         'Yar': "https://cam15.yar-net.ru/OL6y9ghd/mono.m3u8?token=7bc9b4f6796ede3ab681067a74a95131",
-        'Car city driver': "3d_car_driving_test.mp4"}
+        'Car city driver': "3d_car_driving_test.mp4",
+        'Web-Cam': 0}
 
 cams_id = {i: item for i, item in enumerate(cams.keys())}
 
@@ -39,7 +44,7 @@ car_queue = Queue()
 sign_queue = Queue()
 
 cv2.namedWindow(title, cv2.WINDOW_NORMAL)
-cv2.resizeWindow(title, 1600, 900)
+cv2.resizeWindow(title, 1600, 1200)
 
 track_history = defaultdict(lambda: [])
 
@@ -60,7 +65,8 @@ while True:
     # Получение кадра из видеопотока
     ret, frame = cap.read()
     if ret:
-        frame = cv2.resize(frame, (int(frame.shape[1] * 0.5), int(frame.shape[0] * 0.5)))
+        # frame = cv2.resize(frame, (int(frame.shape[1] * 0.5), int(frame.shape[0] * 0.5)))
+        frame = cv2.resize(frame, (1280, 720))
         start_time = time()
 
         # Параллельная обработка кадра двумя моделями
@@ -115,7 +121,7 @@ while True:
             points = np.hstack(track).astype(np.int32).reshape((-1, 1, 2))
             cv2.polylines(frame, [points], isClosed=False, color=colors(cls, bgr=True), thickness=5,
                           lineType=cv2.LINE_4, shift=0)
-        frame = lane_finding_pipeline(frame)
+        frame = lane_finding(frame)
         cv2.imshow(title, frame)
 
         # Выход по нажатию 'q'
