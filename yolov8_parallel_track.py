@@ -2,17 +2,17 @@ import threading
 from collections import defaultdict
 from queue import Queue
 from time import time
-from lane_detect import lane_finding, perspective_transformer
-import cv2
 
+import cv2
 import numpy as np
 from torch import cat
 from torch.cuda import is_available
 from ultralytics import YOLO
 from ultralytics.utils.plotting import colors
 
-title = 'YOLOv8 Tracking on cuda' if is_available() else 'YOLOv8 Tracking on cpu'
+from lane_detect import lane_finding, perspective_transformer
 
+title = 'YOLOv8 Tracking on cuda' if is_available() else 'YOLOv8 Tracking on cpu'
 
 perspective_transformer()
 
@@ -44,7 +44,7 @@ car_queue = Queue()
 sign_queue = Queue()
 
 cv2.namedWindow(title, cv2.WINDOW_NORMAL)
-cv2.resizeWindow(title, 1600, 1200)
+cv2.resizeWindow(title, 1280, 960)
 
 track_history = defaultdict(lambda: [])
 
@@ -57,8 +57,6 @@ def process_frame_car_model(fr):
 def process_frame_sign_model(fr):
     boxes = sign_model.track(fr, imgsz=256, iou=0.5, conf=0.20, stream_buffer=True, verbose=False, persist=True)
     sign_queue.put(boxes)
-
-
 
 
 while True:

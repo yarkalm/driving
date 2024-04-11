@@ -44,10 +44,10 @@ def perspective_transformer():
     img_width = 1280
     img_height = 720
 
-    bot_width = .76  # percent of bottom
-    mid_width = .17  # .17
-    height_pct = .66  # .66
-    bottom_trim = .935
+    bot_width = .85  # percent of bottom
+    mid_width = .27  # .17
+    height_pct = .60  # .66
+    bottom_trim = .82
     src = np.float32([
         [img_width * (.5 - mid_width / 2), img_height * height_pct],
         [img_width * (.5 + mid_width / 2), img_height * height_pct],
@@ -68,7 +68,7 @@ def perspective_transformer():
     Minv = cv2.getPerspectiveTransform(dst, src)
 
 
-def abs_sobel_thresh(img, orient='x', sobel_kernel=3, thresh=(0, 255)):
+def abs_sobel_thresh(img, orient='x', sobel_kernel=5, thresh=(0, 255)):
     # Calculate directional gradient
 
     # 1) Convert to grayscale
@@ -94,7 +94,7 @@ def abs_sobel_thresh(img, orient='x', sobel_kernel=3, thresh=(0, 255)):
     return grad_binary
 
 
-def mag_thresh(image, sobel_kernel=3, mag_thresh=(0, 255)):
+def mag_thresh(image, sobel_kernel=5, mag_thresh=(0, 255)):
     # Calculate gradient magnitude
     # 1) Convert to grayscale
     gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
@@ -112,7 +112,7 @@ def mag_thresh(image, sobel_kernel=3, mag_thresh=(0, 255)):
     return mag_binary
 
 
-def dir_thresh(image, sobel_kernel=3, thresh=(0, np.pi / 2)):
+def dir_thresh(image, sobel_kernel=25, thresh=(0, np.pi / 2)):
     # Calculate gradient direction
     # 1) Convert to grayscale
     gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
@@ -151,15 +151,13 @@ def color_thresh(img, s_thresh=(0, 255), v_thresh=(0, 255)):
 
 
 def thresh_pipeline(img, gradx_thresh=(0, 255), grady_thresh=(0, 255), s_thresh=(0, 255), v_thresh=(0, 255)):
+    img = cv2.GaussianBlur(img, (5, 5), cv2.BORDER_DEFAULT)
     gradx = abs_sobel_thresh(img, orient='x', thresh=gradx_thresh)
     grady = abs_sobel_thresh(img, orient='y', thresh=grady_thresh)
     c_binary = color_thresh(img, s_thresh=s_thresh, v_thresh=v_thresh)
-
     # Combine these thresholded binary images
     thresh_binary = np.zeros_like(img[:, :, 0])
     thresh_binary[(gradx == 1) & (grady == 1) | (c_binary == 1)] = 255
-    #     thresh_binary[c_binary==1] = 255
-    #     thresh_binary[(sxbinary==1)|(s_binary==1)] = 1
 
     return thresh_binary
 
@@ -193,7 +191,7 @@ def sliding_windows_search(img):
     rightx_base = np.argmax(histogram[midpoint:]) + midpoint
 
     # Choose the number of sliding windows
-    nwindows = 9
+    nwindows = 5
     # Set height of windows
     window_height = np.int64(binary_warped.shape[0] / nwindows)
     # Identify the x and y positions of all nonzero pixels in the image
@@ -206,7 +204,7 @@ def sliding_windows_search(img):
     # Set the width of the windows +/- margin
     margin = 100
     # Set minimum number of pixels found to recenter window
-    minpix = 50
+    minpix = 15
     # Create empty lists to receive left and right lane pixel indices
     left_lane_inds = []
     right_lane_inds = []
@@ -232,6 +230,7 @@ def sliding_windows_search(img):
         left_lane_inds.append(good_left_inds)
         right_lane_inds.append(good_right_inds)
         # If you found > minpix pixels, recenter next window on their mean position
+
         if len(good_left_inds) > minpix:
             leftx_current = np.int64(np.mean(nonzerox[good_left_inds]))
         if len(good_right_inds) > minpix:
@@ -401,7 +400,7 @@ def lane_finding(img_orig):
     # 1. Compute the camera calibration matrix and distortion coefficients given a set of chessboard images.
     # mtx, dist are global variables
     global mtx, dist
-    calibration_pickle = pickle.load(open("camera_cal/cal_pickle.p", "rb"))
+    calibration_pickle = pickle.load(open("cal_pickle.p", "rb"))
 
     mtx = calibration_pickle["mtx"]
     dist = calibration_pickle["dist"]
@@ -412,6 +411,9 @@ def lane_finding(img_orig):
     # 3. Use color transforms, gradients, etc., to create a thresholded binary image.
     img_thresh = thresh_pipeline(img_undist, gradx_thresh=(25, 255), grady_thresh=(10, 255), s_thresh=(100, 255),
                                  v_thresh=(0, 255))
+    dist_mask = np.zeros_like(img_thresh)
+    cv2.fillPoly(dist_mask, [src.astype(int)], (255, 255, 255))
+    img_thresh = cv2.bitwise_and(img_thresh, dist_mask)
 
     # 4. Apply a perspective transform to rectify binary image ("birds-eye view").
     # src, dst, M, Minv are global variables
@@ -508,7 +510,7 @@ def lane_finding(img_orig):
     #     print(left_fit, right_fit)
     if isinstance(left_fit, (np.floating, float)) and isinstance(right_fit, (np.floating, float)):
         left_fitx = left_fit * ploty ** 2
-        right_fitx = right_fit* ploty ** 2
+        right_fitx = right_fit * ploty ** 2
     else:
         left_fitx = left_fit[0] * ploty ** 2 + left_fit[1] * ploty + left_fit[2]
         right_fitx = right_fit[0] * ploty ** 2 + right_fit[1] * ploty + right_fit[2]
@@ -517,7 +519,7 @@ def lane_finding(img_orig):
     lane_width_mean, lane_width_var = lane_quality(ploty, left_fitx, right_fitx)
 
     # 7. Warp the detected lane boundaries back onto the original image.
-    result = lane_mask(img_undist, img_birdeye, Minv, ploty, left_fitx, right_fitx)
+    result = lane_mask(img_orig, img_birdeye, Minv, ploty, left_fitx, right_fitx)
     cv2.putText(result, 'Radius of Curvature (L) = ' + str(round(left_curverad, 1)) + '(m)',
                 (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
     cv2.putText(result, 'Radius of Curvature (R) = ' + str(round(right_curverad, 1)) + '(m)',
@@ -530,15 +532,18 @@ def lane_finding(img_orig):
     # Output visual display of the lane boundaries and numerical estimation of lane curvature and vehicle position.
     canvas = np.zeros([960, 1280, 3], dtype=np.uint8)
 
-    canvas[0:720, 0:1280, :] = result
+    # Сохраняем только область внутри полигона
 
     ## Plot 1
     #     color_thresh_binary = np.dstack(( np.zeros_like(img_thresh), img_thresh, np.zeros_like(img_thresh) ))
     #     color_thresh_binary = (color_thresh_binary*255).astype(np.uint8)
+    # mask = np.zeros_like(img_thresh)
+    # cv2.fillPoly(mask, [src.astype(int)], (255, 255, 255))
+    # img_thresh = cv2.bitwise_and(img_thresh, mask)
     img_debug = img_thresh
     color_debug = np.dstack((img_debug, img_debug, img_debug))
     #     color_debug = (color_debug*255).astype(np.uint8)
-    cv2.polylines(color_debug, np.int32([src]), True, (0, 255, 0), thickness=4)
+    cv2.polylines(color_debug, np.int32([src]), True, (0, 255, 0), thickness=2)
     plot1 = cv2.resize(color_debug, (426, 240))
 
     ## Plot 3: bird eye view (binary)
@@ -551,17 +556,20 @@ def lane_finding(img_orig):
     plot4 = img_search
     left_pts = np.transpose(np.vstack((left_fitx, ploty))).astype(np.int32)
     right_pts = np.transpose(np.vstack((right_fitx, ploty))).astype(np.int32)
-    #     print(left_pts.shape);print(left_pts)
-    #     print(right_pts.shape);print(right_pts)
     cv2.polylines(plot4, np.int32([left_pts]), False, (255, 255, 0), thickness=5)
     cv2.polylines(plot4, np.int32([right_pts]), False, (255, 255, 0), thickness=5)
     plot4 = cv2.resize(img_search, (426, 240))
 
     ## Plot 2: bird eye view (color)
+
+    img_plot = np.zeros_like(img_birdeye_color)
+    img_plot[0:720, 256:1024] = img_birdeye_color[0:720, 256:1024]
+    img_birdeye_color = img_plot
     cv2.polylines(img_birdeye_color, np.int32([dst]), True, (0, 255, 0), thickness=4)
     plot2 = cv2.resize(img_birdeye_color, (426, 240))
 
     # Plot the three contents
+    canvas[0:720, 0:1280, :] = result
     canvas[720:960, 0:426, :] = plot1
     canvas[720:960, 427:427 + 426, :] = plot2
     canvas[720:960, -427:-1, :] = plot4
