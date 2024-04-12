@@ -400,7 +400,7 @@ def lane_finding(img_orig):
     # 1. Compute the camera calibration matrix and distortion coefficients given a set of chessboard images.
     # mtx, dist are global variables
     global mtx, dist
-    calibration_pickle = pickle.load(open("cal_pickle.p", "rb"))
+    calibration_pickle = pickle.load(open("pickle/cal_pickle.p", "rb"))
 
     mtx = calibration_pickle["mtx"]
     dist = calibration_pickle["dist"]
