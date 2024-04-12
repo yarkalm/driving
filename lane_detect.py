@@ -46,7 +46,7 @@ def perspective_transformer():
 
     bot_width = .85  # percent of bottom
     mid_width = .27  # .17
-    height_pct = .60  # .66
+    height_pct = .57  # .66
     bottom_trim = .82
     src = np.float32([
         [img_width * (.5 - mid_width / 2), img_height * height_pct],
@@ -151,7 +151,7 @@ def color_thresh(img, s_thresh=(0, 255), v_thresh=(0, 255)):
 
 
 def thresh_pipeline(img, gradx_thresh=(0, 255), grady_thresh=(0, 255), s_thresh=(0, 255), v_thresh=(0, 255)):
-    img = cv2.GaussianBlur(img, (5, 5), cv2.BORDER_DEFAULT)
+    img = cv2.bilateralFilter(img, 0, 100, 5)
     gradx = abs_sobel_thresh(img, orient='x', thresh=gradx_thresh)
     grady = abs_sobel_thresh(img, orient='y', thresh=grady_thresh)
     c_binary = color_thresh(img, s_thresh=s_thresh, v_thresh=v_thresh)
@@ -520,14 +520,14 @@ def lane_finding(img_orig):
 
     # 7. Warp the detected lane boundaries back onto the original image.
     result = lane_mask(img_orig, img_birdeye, Minv, ploty, left_fitx, right_fitx)
-    cv2.putText(result, 'Radius of Curvature (L) = ' + str(round(left_curverad, 1)) + '(m)',
-                (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
-    cv2.putText(result, 'Radius of Curvature (R) = ' + str(round(right_curverad, 1)) + '(m)',
-                (50, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+    # cv2.putText(result, 'Radius of Curvature (L) = ' + str(round(left_curverad, 1)) + '(m)',
+    #             (250, 50), cv2.FONT_HERSHEY_PLAIN, 1, (255, 255, 255), 2)
+    # cv2.putText(result, 'Radius of Curvature (R) = ' + str(round(right_curverad, 1)) + '(m)',
+    #             (250, 70), cv2.FONT_HERSHEY_PLAIN, 1, (255, 255, 255), 2)
     cv2.putText(result, 'Vehicle is ' + str(round(center_diff, 2)) + '(m) off center',
-                (50, 150), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+                (250, 90), cv2.FONT_ITALIC, 0.75, (255, 255, 255), 2)
     cv2.putText(result, 'Lane width ' + str(round(lane_width_mean, 2)) + '(m) Var:' + str(round(lane_width_var)),
-                (50, 200), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+                (250, 110), cv2.FONT_ITALIC, 0.75, (255, 255, 255), 2)
 
     # Output visual display of the lane boundaries and numerical estimation of lane curvature and vehicle position.
     canvas = np.zeros([960, 1280, 3], dtype=np.uint8)
@@ -535,11 +535,6 @@ def lane_finding(img_orig):
     # Сохраняем только область внутри полигона
 
     ## Plot 1
-    #     color_thresh_binary = np.dstack(( np.zeros_like(img_thresh), img_thresh, np.zeros_like(img_thresh) ))
-    #     color_thresh_binary = (color_thresh_binary*255).astype(np.uint8)
-    # mask = np.zeros_like(img_thresh)
-    # cv2.fillPoly(mask, [src.astype(int)], (255, 255, 255))
-    # img_thresh = cv2.bitwise_and(img_thresh, mask)
     img_debug = img_thresh
     color_debug = np.dstack((img_debug, img_debug, img_debug))
     #     color_debug = (color_debug*255).astype(np.uint8)
@@ -547,10 +542,10 @@ def lane_finding(img_orig):
     plot1 = cv2.resize(color_debug, (426, 240))
 
     ## Plot 3: bird eye view (binary)
-    img_debug = img_birdeye
-    color_debug = np.dstack((img_debug, img_debug, img_debug))
-    #     color_debug = (color_debug*255).astype(np.uint8)
-    plot3 = cv2.resize(color_debug, (426, 240))
+    # img_debug = img_birdeye
+    # color_debug = np.dstack((img_debug, img_debug, img_debug))
+    # #     color_debug = (color_debug*255).astype(np.uint8)
+    # plot3 = cv2.resize(color_debug, (426, 240))
 
     ## Plot 4: the searching process
     plot4 = img_search

@@ -2,7 +2,7 @@ import threading
 from collections import defaultdict
 from queue import Queue
 from time import time
-
+from lane_detect2 import process_image
 import cv2
 import numpy as np
 from torch import cat
@@ -83,43 +83,43 @@ while True:
         frame = sign_result.plot()
         frame = car_result.plot(img=frame)
 
+        cv2.putText(frame, f'{"{:.2f} ms".format(avg_inf)}', (frame.shape[1] - 105, frame.shape[0] - 10),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2, cv2.LINE_AA)
+
+        # if sign_result.boxes.id is not None and car_result.boxes.id is not None:
+        #     boxes = cat((car_result.boxes.xywh.cpu(), sign_result.boxes.xywh.cpu()), dim=0)
+        #     track_ids = car_result.boxes.id.int().cpu().tolist() + sign_result.boxes.id.int().cpu().tolist()
+        #     clss = car_result.boxes.cls.cpu() + sign_result.boxes.cls.cpu()
+        # elif car_result.boxes.id is not None:
+        #     track_ids = car_result.boxes.id.int().cpu().tolist()
+        #     boxes = car_result.boxes.xywh.cpu()
+        #     clss = car_result.boxes.cls.cpu()
+        # elif sign_result.boxes.id is not None:
+        #     track_ids = sign_result.boxes.id.int().cpu().tolist()
+        #     boxes = sign_result.boxes.xywh.cpu()
+        #     clss = sign_result.boxes.cls.cpu()
+        # else:
+        #     track_ids = []
+        #     boxes = []
+        #     clss = []
+
+        # # Plot the tracks
+        # for box, track_id, cls in zip(boxes, track_ids, clss):
+        #     x, y, w, h = box
+        #     track = track_history[track_id]
+        #     track.append((float(x), float(y)))  # x, y center point
+        #     if len(track) > 30:  # retain 90 tracks for 90 frames
+        #         track.pop(0)
+        #
+        #     # Draw the tracking lines
+        #     points = np.hstack(track).astype(np.int32).reshape((-1, 1, 2))
+        #     cv2.polylines(frame, [points], isClosed=False, color=colors(cls, bgr=True), thickness=5,
+        #                   lineType=cv2.LINE_4, shift=0)
+        frame = lane_finding(frame)
         end_time = time()
         fps = 1 // (end_time - start_time)
         cv2.putText(frame, f'{str(fps)}', (10, 20),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2, cv2.LINE_AA)
-        cv2.putText(frame, f'{"{:.2f} ms".format(avg_inf)}', (frame.shape[1] - 105, frame.shape[0] - 10),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2, cv2.LINE_AA)
-
-        if sign_result.boxes.id is not None and car_result.boxes.id is not None:
-            boxes = cat((car_result.boxes.xywh.cpu(), sign_result.boxes.xywh.cpu()), dim=0)
-            track_ids = car_result.boxes.id.int().cpu().tolist() + sign_result.boxes.id.int().cpu().tolist()
-            clss = car_result.boxes.cls.cpu() + sign_result.boxes.cls.cpu()
-        elif car_result.boxes.id is not None:
-            track_ids = car_result.boxes.id.int().cpu().tolist()
-            boxes = car_result.boxes.xywh.cpu()
-            clss = car_result.boxes.cls.cpu()
-        elif sign_result.boxes.id is not None:
-            track_ids = sign_result.boxes.id.int().cpu().tolist()
-            boxes = sign_result.boxes.xywh.cpu()
-            clss = sign_result.boxes.cls.cpu()
-        else:
-            track_ids = []
-            boxes = []
-            clss = []
-
-        # Plot the tracks
-        for box, track_id, cls in zip(boxes, track_ids, clss):
-            x, y, w, h = box
-            track = track_history[track_id]
-            track.append((float(x), float(y)))  # x, y center point
-            if len(track) > 30:  # retain 90 tracks for 90 frames
-                track.pop(0)
-
-            # Draw the tracking lines
-            points = np.hstack(track).astype(np.int32).reshape((-1, 1, 2))
-            cv2.polylines(frame, [points], isClosed=False, color=colors(cls, bgr=True), thickness=5,
-                          lineType=cv2.LINE_4, shift=0)
-        frame = lane_finding(frame)
         cv2.imshow(title, frame)
 
         # Выход по нажатию 'q'
